@@ -152,3 +152,407 @@ REFRESH inscripcion_curso_secundaria;
 SELECT * FROM alumnos LIMIT 10;
 
 SELECT * FROM inscripcion_curso_secundaria LIMIT 10;
+
+USE bd_analisis_escolar;
+
+DROP VIEW IF EXISTS vw_analisis_secundaria;
+
+CREATE VIEW vw_analisis_secundaria AS
+
+SELECT
+
+    -- ALUMNO
+    regexp_replace(a.id_alumno,'"','') AS id_alumno,
+
+    concat(
+        regexp_replace(a.nombres_alumno,'"',''),
+        ' ',
+        regexp_replace(a.apellido1_alumno,'"',''),
+        ' ',
+        regexp_replace(a.apellido2_alumno,'"','')
+    ) AS nombre_completo_alumno,
+
+    -- CURSO
+    regexp_replace(cs.grado,'"','') AS grado,
+    regexp_replace(cs.grupo,'"','') AS grupo,
+
+    -- MATERIA
+    regexp_replace(m.nombre_materia,'"','') AS nombre_materia,
+
+    -- DOCENTE
+    regexp_replace(u.nom_usuario,'"','') AS docente,
+
+    -- CALIFICACIONES
+    CAST(regexp_replace(ics.cal_periodo1,'"','') AS DOUBLE) AS cal_periodo1,
+
+    CAST(regexp_replace(ics.cal_periodo2,'"','') AS DOUBLE) AS cal_periodo2,
+
+    CAST(regexp_replace(ics.cal_periodo3,'"','') AS DOUBLE) AS cal_periodo3,
+
+    -- RECUPERACIONES
+    CAST(
+        regexp_replace(
+            nvl(ics.cal_recuperacion1,'0'),
+            '"',
+            ''
+        ) AS DOUBLE
+    ) AS cal_recuperacion1,
+
+    CAST(
+        regexp_replace(
+            nvl(ics.cal_recuperacion2,'0'),
+            '"',
+            ''
+        ) AS DOUBLE
+    ) AS cal_recuperacion2,
+
+    -- CALIFICACION FINAL P1
+    CASE
+
+        WHEN CAST(
+            regexp_replace(
+                nvl(ics.cal_recuperacion1,'0'),
+                '"',
+                ''
+            ) AS DOUBLE
+        ) > 0
+
+        THEN CAST(
+            regexp_replace(
+                ics.cal_recuperacion1,
+                '"',
+                ''
+            ) AS DOUBLE
+        )
+
+        ELSE CAST(
+            regexp_replace(
+                ics.cal_periodo1,
+                '"',
+                ''
+            ) AS DOUBLE
+        )
+
+    END AS cal_p1_final,
+
+    -- CALIFICACION FINAL P2
+    CASE
+
+        WHEN CAST(
+            regexp_replace(
+                nvl(ics.cal_recuperacion2,'0'),
+                '"',
+                ''
+            ) AS DOUBLE
+        ) > 0
+
+        THEN CAST(
+            regexp_replace(
+                ics.cal_recuperacion2,
+                '"',
+                ''
+            ) AS DOUBLE
+        )
+
+        ELSE CAST(
+            regexp_replace(
+                ics.cal_periodo2,
+                '"',
+                ''
+            ) AS DOUBLE
+        )
+
+    END AS cal_p2_final,
+
+    -- CALIFICACION FINAL P3
+    CAST(
+        regexp_replace(
+            ics.cal_periodo3,
+            '"',
+            ''
+        ) AS DOUBLE
+    ) AS cal_p3_final,
+
+    -- PROMEDIO FINAL
+    ROUND(
+
+        (
+
+            CASE
+
+                WHEN CAST(
+                    regexp_replace(
+                        nvl(ics.cal_recuperacion1,'0'),
+                        '"',
+                        ''
+                    ) AS DOUBLE
+                ) > 0
+
+                THEN CAST(
+                    regexp_replace(
+                        ics.cal_recuperacion1,
+                        '"',
+                        ''
+                    ) AS DOUBLE
+                )
+
+                ELSE CAST(
+                    regexp_replace(
+                        ics.cal_periodo1,
+                        '"',
+                        ''
+                    ) AS DOUBLE
+                )
+
+            END
+
+            +
+
+            CASE
+
+                WHEN CAST(
+                    regexp_replace(
+                        nvl(ics.cal_recuperacion2,'0'),
+                        '"',
+                        ''
+                    ) AS DOUBLE
+                ) > 0
+
+                THEN CAST(
+                    regexp_replace(
+                        ics.cal_recuperacion2,
+                        '"',
+                        ''
+                    ) AS DOUBLE
+                )
+
+                ELSE CAST(
+                    regexp_replace(
+                        ics.cal_periodo2,
+                        '"',
+                        ''
+                    ) AS DOUBLE
+                )
+
+            END
+
+            +
+
+            CAST(
+                regexp_replace(
+                    ics.cal_periodo3,
+                    '"',
+                    ''
+                ) AS DOUBLE
+            )
+
+        ) / 3
+
+    ,2) AS promedio_final_calculado,
+
+    -- TOTAL FALTAS
+    (
+        CAST(regexp_replace(nvl(ics.faltas_periodo1,'0'),'"','') AS DOUBLE)
+        +
+        CAST(regexp_replace(nvl(ics.faltas_periodo2,'0'),'"','') AS DOUBLE)
+        +
+        CAST(regexp_replace(nvl(ics.faltas_periodo3,'0'),'"','') AS DOUBLE)
+    ) AS total_faltas,
+
+    -- PROMEDIO CONDUCTA
+    ROUND(
+
+        (
+            CAST(regexp_replace(nvl(ics.conducta_periodo1,'0'),'"','') AS DOUBLE)
+            +
+            CAST(regexp_replace(nvl(ics.conducta_periodo2,'0'),'"','') AS DOUBLE)
+            +
+            CAST(regexp_replace(nvl(ics.conducta_periodo3,'0'),'"','') AS DOUBLE)
+        ) / 3
+
+    ,2) AS promedio_conducta,
+
+    -- ESTATUS ACADEMICO
+    CASE
+
+        WHEN ROUND(
+
+            (
+
+                CASE
+
+                    WHEN CAST(
+                        regexp_replace(
+                            nvl(ics.cal_recuperacion1,'0'),
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    ) > 0
+
+                    THEN CAST(
+                        regexp_replace(
+                            ics.cal_recuperacion1,
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    )
+
+                    ELSE CAST(
+                        regexp_replace(
+                            ics.cal_periodo1,
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    )
+
+                END
+
+                +
+
+                CASE
+
+                    WHEN CAST(
+                        regexp_replace(
+                            nvl(ics.cal_recuperacion2,'0'),
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    ) > 0
+
+                    THEN CAST(
+                        regexp_replace(
+                            ics.cal_recuperacion2,
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    )
+
+                    ELSE CAST(
+                        regexp_replace(
+                            ics.cal_periodo2,
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    )
+
+                END
+
+                +
+
+                CAST(
+                    regexp_replace(
+                        ics.cal_periodo3,
+                        '"',
+                        ''
+                    ) AS DOUBLE
+                )
+
+            ) / 3
+
+        ,2) < 6
+
+        THEN 'REPROBADO'
+
+        WHEN ROUND(
+
+            (
+
+                CASE
+
+                    WHEN CAST(
+                        regexp_replace(
+                            nvl(ics.cal_recuperacion1,'0'),
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    ) > 0
+
+                    THEN CAST(
+                        regexp_replace(
+                            ics.cal_recuperacion1,
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    )
+
+                    ELSE CAST(
+                        regexp_replace(
+                            ics.cal_periodo1,
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    )
+
+                END
+
+                +
+
+                CASE
+
+                    WHEN CAST(
+                        regexp_replace(
+                            nvl(ics.cal_recuperacion2,'0'),
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    ) > 0
+
+                    THEN CAST(
+                        regexp_replace(
+                            ics.cal_recuperacion2,
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    )
+
+                    ELSE CAST(
+                        regexp_replace(
+                            ics.cal_periodo2,
+                            '"',
+                            ''
+                        ) AS DOUBLE
+                    )
+
+                END
+
+                +
+
+                CAST(
+                    regexp_replace(
+                        ics.cal_periodo3,
+                        '"',
+                        ''
+                    ) AS DOUBLE
+                )
+
+            ) / 3
+
+        ,2) < 7
+
+        THEN 'RIESGO'
+
+        ELSE 'APROBADO'
+
+    END AS estatus_academico
+
+FROM inscripcion_curso_secundaria ics
+
+INNER JOIN alumnos a
+ON regexp_replace(ics.id_alumno,'"','')
+=
+regexp_replace(a.id_alumno,'"','')
+
+INNER JOIN cursos_secundaria cs
+ON regexp_replace(ics.id_cursos_secundaria,'"','')
+=
+regexp_replace(cs.id_curso_secundaria,'"','')
+
+INNER JOIN materias m
+ON regexp_replace(cs.id_materia,'"','')
+=
+regexp_replace(m.id_materia,'"','')
+
+LEFT JOIN usuarios u
+ON regexp_replace(cs.id_maestro,'"','')
+=
+regexp_replace(u.id_usuario,'"','');
