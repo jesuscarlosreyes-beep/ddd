@@ -556,3 +556,92 @@ LEFT JOIN usuarios u
 ON regexp_replace(cs.id_maestro,'"','')
 =
 regexp_replace(u.id_usuario,'"','');
+
+
+USE bd_analisis_escolar;
+
+SELECT *
+FROM vw_analisis_secundaria
+LIMIT 10;
+
+Promedio general por materia
+
+SELECT
+    nombre_materia,
+    COUNT(*) AS total_registros,
+    ROUND(AVG(promedio_final_calculado), 2) AS promedio_materia,
+    ROUND(AVG(total_faltas), 2) AS promedio_faltas,
+    ROUND(AVG(promedio_conducta), 2) AS promedio_conducta
+FROM vw_analisis_secundaria
+GROUP BY nombre_materia
+ORDER BY promedio_materia ASC;
+
+Alumnos en riesgo de reprobaciónn
+
+SELECT
+    nombre_completo_alumno,
+    grado,
+    grupo,
+    nombre_materia,
+    promedio_final_calculado,
+    total_faltas,
+    promedio_conducta,
+    estatus_academico
+FROM vw_analisis_secundaria
+WHERE estatus_academico IN ('RIESGO', 'REPROBADO')
+ORDER BY promedio_final_calculado ASC, total_faltas DESC;
+
+Porcentaje de reprobación por grupo
+
+SELECT
+    grado,
+    grupo,
+    COUNT(*) AS total_evaluaciones,
+    SUM(CASE WHEN estatus_academico = 'REPROBADO' THEN 1 ELSE 0 END) AS total_reprobadas,
+    ROUND(
+        SUM(CASE WHEN estatus_academico = 'REPROBADO' THEN 1 ELSE 0 END) * 100.0 / COUNT(*),
+        2
+    ) AS porcentaje_reprobacion
+FROM vw_analisis_secundaria
+GROUP BY grado, grupo
+ORDER BY porcentaje_reprobacion DESC;
+
+Recuperaciones por materia
+
+SELECT
+    nombre_materia,
+    COUNT(*) AS total_registros,
+    SUM(CASE WHEN cal_recuperacion1 > 0 THEN 1 ELSE 0 END) AS recuperaciones_p1,
+    SUM(CASE WHEN cal_recuperacion2 > 0 THEN 1 ELSE 0 END) AS recuperaciones_p2,
+    SUM(
+        CASE WHEN cal_recuperacion1 > 0 THEN 1 ELSE 0 END
+        +
+        CASE WHEN cal_recuperacion2 > 0 THEN 1 ELSE 0 END
+    ) AS total_recuperaciones
+FROM vw_analisis_secundaria
+GROUP BY nombre_materia
+ORDER BY total_recuperaciones DESC;
+
+Promedio por alumno
+
+SELECT
+    nombre_completo_alumno,
+    grado,
+    grupo,
+    ROUND(AVG(promedio_final_calculado), 2) AS promedio_general_alumno,
+    ROUND(AVG(total_faltas), 2) AS promedio_faltas,
+    ROUND(AVG(promedio_conducta), 2) AS promedio_conducta
+FROM vw_analisis_secundaria
+GROUP BY nombre_completo_alumno, grado, grupo
+ORDER BY promedio_general_alumno ASC;
+
+Materias con mas faltas
+
+SELECT
+    nombre_materia,
+    COUNT(*) AS total_registros,
+    SUM(total_faltas) AS faltas_totales,
+    ROUND(AVG(total_faltas), 2) AS promedio_faltas_por_registro
+FROM vw_analisis_secundaria
+GROUP BY nombre_materia
+ORDER BY faltas_totales DESC;
