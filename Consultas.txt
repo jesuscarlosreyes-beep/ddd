@@ -1,0 +1,286 @@
+Subir CSV a HDFS
+
+hdfs dfs -mkdir /user/cloudera/sisadfpg
+hdfs dfs -mkdir /user/cloudera/sisadfpg/alumnos
+hdfs dfs -mkdir /user/cloudera/sisadfpg/materias
+hdfs dfs -mkdir /user/cloudera/sisadfpg/grupos
+hdfs dfs -mkdir /user/cloudera/sisadfpg/inscripciones
+hdfs dfs -mkdir /user/cloudera/sisadfpg/cursos_secundaria
+hdfs dfs -mkdir /user/cloudera/sisadfpg/inscripcion_curso_secundaria
+hdfs dfs -mkdir /user/cloudera/sisadfpg/ciclos_escolares
+hdfs dfs -mkdir /user/cloudera/sisadfpg/usuarios
+
+Subir cada CSV
+
+hdfs dfs -put alumnos.csv /user/cloudera/sisadfpg/alumnos/
+hdfs dfs -put materias.csv /user/cloudera/sisadfpg/materias/
+hdfs dfs -put grupos.csv /user/cloudera/sisadfpg/grupos/
+hdfs dfs -put inscripciones.csv /user/cloudera/sisadfpg/inscripciones/
+hdfs dfs -put cursos_secundaria.csv /user/cloudera/sisadfpg/cursos_secundaria/
+hdfs dfs -put inscripcion_curso_secundaria.csv /user/cloudera/sisadfpg/inscripcion_curso_secundaria/
+hdfs dfs -put ciclos_escolares.csv /user/cloudera/sisadfpg/ciclos_escolares/
+hdfs dfs -put usuarios.csv /user/cloudera/sisadfpg/usuarios/
+
+Crear base de datos en Impala
+
+CREATE DATABASE IF NOT EXISTS bd_analisis_escolar;
+
+USE bd_analisis_escolar;
+
+Crear tablas externas
+
+Vista recomendada como tabla analítica central
+
+DROP VIEW IF EXISTS vw_analisis_secundaria;
+
+CREATE VIEW vw_analisis_secundaria AS
+SELECT
+
+    -- DATOS DEL ALUMNO
+    a.id_alumno,
+    a.nombre_completo_alumno,
+
+    -- DATOS DEL CURSO
+    cs.grado,
+    cs.grupo,
+
+    -- MATERIA
+    m.nombre_materia,
+
+    -- DOCENTE
+    u.nom_usuario AS docente,
+
+    -- CALIFICACIONES ORIGINALES
+    CAST(ics.cal_periodo1 AS INT) AS cal_periodo1,
+    CAST(ics.cal_periodo2 AS INT) AS cal_periodo2,
+    CAST(ics.cal_periodo3 AS INT) AS cal_periodo3,
+
+    -- RECUPERACIONES
+    CAST(ics.cal_recuperacion1 AS INT) AS cal_recuperacion1,
+    CAST(ics.cal_recuperacion2 AS INT) AS cal_recuperacion2,
+
+    -- CALIFICACION FINAL P1
+    CASE
+        WHEN ics.cal_recuperacion1 IS NOT NULL
+             AND TRIM(ics.cal_recuperacion1) != ''
+             AND CAST(ics.cal_recuperacion1 AS INT) > 0
+        THEN CAST(ics.cal_recuperacion1 AS INT)
+
+        ELSE CAST(ics.cal_periodo1 AS INT)
+    END AS cal_p1_final,
+
+    -- CALIFICACION FINAL P2
+    CASE
+        WHEN ics.cal_recuperacion2 IS NOT NULL
+             AND TRIM(ics.cal_recuperacion2) != ''
+             AND CAST(ics.cal_recuperacion2 AS INT) > 0
+        THEN CAST(ics.cal_recuperacion2 AS INT)
+
+        ELSE CAST(ics.cal_periodo2 AS INT)
+    END AS cal_p2_final,
+
+    -- CALIFICACION FINAL P3
+    CAST(ics.cal_periodo3 AS INT) AS cal_p3_final,
+
+    -- PROMEDIO FINAL CALCULADO
+    ROUND(
+
+        (
+
+            CASE
+                WHEN ics.cal_recuperacion1 IS NOT NULL
+                     AND TRIM(ics.cal_recuperacion1) != ''
+                     AND CAST(ics.cal_recuperacion1 AS INT) > 0
+                THEN CAST(ics.cal_recuperacion1 AS INT)
+
+                ELSE CAST(ics.cal_periodo1 AS INT)
+            END
+
+            +
+
+            CASE
+                WHEN ics.cal_recuperacion2 IS NOT NULL
+                     AND TRIM(ics.cal_recuperacion2) != ''
+                     AND CAST(ics.cal_recuperacion2 AS INT) > 0
+                THEN CAST(ics.cal_recuperacion2 AS INT)
+
+                ELSE CAST(ics.cal_periodo2 AS INT)
+            END
+
+            +
+
+            CAST(ics.cal_periodo3 AS INT)
+
+        ) / 3
+
+    ,2) AS promedio_final_calculado,
+
+    -- FALTAS TOTALES
+    (
+        CAST(ics.faltas_periodo1 AS INT)
+        +
+        CAST(ics.faltas_periodo2 AS INT)
+        +
+        CAST(ics.faltas_periodo3 AS INT)
+    ) AS total_faltas,
+
+    -- PROMEDIO DE CONDUCTA
+    ROUND(
+
+        (
+            CAST(ics.conducta_periodo1 AS DOUBLE)
+            +
+            CAST(ics.conducta_periodo2 AS DOUBLE)
+            +
+            CAST(ics.conducta_periodo3 AS DOUBLE)
+        ) / 3
+
+    ,2) AS promedio_conducta,
+
+    -- ESTATUS ACADEMICO
+    CASE
+
+        WHEN ROUND(
+
+            (
+
+                CASE
+                    WHEN ics.cal_recuperacion1 IS NOT NULL
+                         AND TRIM(ics.cal_recuperacion1) != ''
+                         AND CAST(ics.cal_recuperacion1 AS INT) > 0
+                    THEN CAST(ics.cal_recuperacion1 AS INT)
+
+                    ELSE CAST(ics.cal_periodo1 AS INT)
+                END
+
+                +
+
+                CASE
+                    WHEN ics.cal_recuperacion2 IS NOT NULL
+                         AND TRIM(ics.cal_recuperacion2) != ''
+                         AND CAST(ics.cal_recuperacion2 AS INT) > 0
+                    THEN CAST(ics.cal_recuperacion2 AS INT)
+
+                    ELSE CAST(ics.cal_periodo2 AS INT)
+                END
+
+                +
+
+                CAST(ics.cal_periodo3 AS INT)
+
+            ) / 3
+
+        ,2) < 6
+
+        THEN 'REPROBADO'
+
+        WHEN ROUND(
+
+            (
+
+                CASE
+                    WHEN ics.cal_recuperacion1 IS NOT NULL
+                         AND TRIM(ics.cal_recuperacion1) != ''
+                         AND CAST(ics.cal_recuperacion1 AS INT) > 0
+                    THEN CAST(ics.cal_recuperacion1 AS INT)
+
+                    ELSE CAST(ics.cal_periodo1 AS INT)
+                END
+
+                +
+
+                CASE
+                    WHEN ics.cal_recuperacion2 IS NOT NULL
+                         AND TRIM(ics.cal_recuperacion2) != ''
+                         AND CAST(ics.cal_recuperacion2 AS INT) > 0
+                    THEN CAST(ics.cal_recuperacion2 AS INT)
+
+                    ELSE CAST(ics.cal_periodo2 AS INT)
+                END
+
+                +
+
+                CAST(ics.cal_periodo3 AS INT)
+
+            ) / 3
+
+        ,2) < 7
+
+        THEN 'RIESGO'
+
+        ELSE 'APROBADO'
+
+    END AS estatus_academico
+
+FROM inscripcion_curso_secundaria ics
+
+INNER JOIN alumnos a
+    ON ics.id_alumno = a.id_alumno
+
+INNER JOIN cursos_secundaria cs
+    ON ics.id_cursos_secundaria = cs.id_curso_secundaria
+
+INNER JOIN materias m
+    ON cs.id_materia = m.id_materia
+
+LEFT JOIN usuarios u
+    ON cs.id_maestro = u.id_usuario;
+
+
+Promedio general por materia
+
+SELECT
+    nombre_materia,
+    COUNT(*) AS total_registros,
+    ROUND(AVG(promedio_final_calculado), 2) AS promedio_materia,
+    ROUND(AVG(total_faltas), 2) AS promedio_faltas,
+    ROUND(AVG(promedio_conducta), 2) AS promedio_conducta
+FROM vw_analisis_secundaria
+GROUP BY nombre_materia
+ORDER BY promedio_materia ASC;
+
+Alumnos en riesgo académico
+
+SELECT
+    nombre_completo_alumno,
+    grado,
+    grupo,
+    nombre_materia,
+    promedio_final_calculado,
+    total_faltas,
+    promedio_conducta,
+    estatus_academico
+FROM vw_analisis_secundaria
+WHERE estatus_academico IN ('RIESGO', 'REPROBADO')
+ORDER BY promedio_final_calculado ASC, total_faltas DESC;
+
+Reprobación por grupo
+
+SELECT
+    grado,
+    grupo,
+    COUNT(*) AS total_evaluaciones,
+    SUM(CASE WHEN estatus_academico = 'REPROBADO' THEN 1 ELSE 0 END) AS total_reprobadas,
+    ROUND(
+        SUM(CASE WHEN estatus_academico = 'REPROBADO' THEN 1 ELSE 0 END) * 100.0 / COUNT(*),
+        2
+    ) AS porcentaje_reprobacion
+FROM vw_analisis_secundaria
+GROUP BY grado, grupo
+ORDER BY porcentaje_reprobacion DESC;
+
+Recuperaciones por materia
+
+SELECT
+    nombre_materia,
+    COUNT(*) AS total_registros,
+    SUM(CASE WHEN cal_recuperacion1 > 0 THEN 1 ELSE 0 END) AS recuperaciones_p1,
+    SUM(CASE WHEN cal_recuperacion2 > 0 THEN 1 ELSE 0 END) AS recuperaciones_p2,
+    SUM(
+        CASE WHEN cal_recuperacion1 > 0 THEN 1 ELSE 0 END
+        +
+        CASE WHEN cal_recuperacion2 > 0 THEN 1 ELSE 0 END
+    ) AS total_recuperaciones
+FROM vw_analisis_secundaria
+GROUP BY nombre_materia
+ORDER BY total_recuperaciones DESC;
