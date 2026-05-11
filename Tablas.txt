@@ -1,0 +1,181 @@
+CREATE EXTERNAL TABLE alumnos (
+    id_alumno STRING,
+    curp_alumno STRING,
+    nombres_alumno STRING,
+    apellido1_alumno STRING,
+    apellido2_alumno STRING,
+    nombre_completo_alumno STRING,
+    matricula_alumno STRING
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+    "separatorChar" = ",",
+    "quoteChar" = "\"",
+    "escapeChar" = "\\"
+)
+STORED AS TEXTFILE
+LOCATION '/user/cloudera/sisadfpg/bd/alumnos'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+
+
+
+CREATE EXTERNAL TABLE materias (
+    id_materia STRING,
+    nombre_materia STRING,
+    tipo_materia STRING,
+    orden_materia STRING,
+    id_seccion STRING
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+    "separatorChar" = ",",
+    "quoteChar" = "\"",
+    "escapeChar" = "\\"
+)
+STORED AS TEXTFILE
+LOCATION '/user/cloudera/sisadfpg/bd/materias'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+
+
+CREATE EXTERNAL TABLE usuarios (
+    id_usuario STRING,
+    alias_usuario STRING,
+    pass_usuario STRING,
+    nom_usuario STRING,
+    tipo_usuario STRING,
+    comentario_usuario STRING,
+    estatus_usuario STRING
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+    "separatorChar" = ",",
+    "quoteChar" = "\"",
+    "escapeChar" = "\\"
+)
+STORED AS TEXTFILE
+LOCATION '/user/cloudera/sisadfpg/bd/usuarios'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+
+CREATE EXTERNAL TABLE cursos_secundaria (
+    id_curso_secundaria STRING,
+    id_materia STRING,
+    id_ciclo STRING,
+    id_maestro STRING,
+    habilita_e1 STRING,
+    habilita_e2 STRING,
+    habilita_e3 STRING,
+    habilita_a1 STRING,
+    habilita_a2 STRING,
+    habilita_a3 STRING,
+    ponderacion_examen STRING,
+    ponderacion_tareas STRING,
+    ponderacion_trabajos STRING,
+    nombre_ponderacion_examen STRING,
+    nombre_ponderacion_tareas STRING,
+    nombre_ponderacion_trabajos STRING,
+    estatus_curso_sec STRING,
+    grado STRING,
+    grupo STRING,
+    habilita_r1 STRING,
+    habilita_r2 STRING
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+    "separatorChar" = ",",
+    "quoteChar" = "\"",
+    "escapeChar" = "\\"
+)
+STORED AS TEXTFILE
+LOCATION '/user/cloudera/sisadfpg/bd/cursos_secundaria'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+
+
+CREATE EXTERNAL TABLE inscripcion_curso_secundaria (
+    id_inscripcion_curso_secundaria STRING,
+    id_alumno STRING,
+    id_cursos_secundaria STRING,
+    examen_avance1 STRING,
+    tareas_avance1 STRING,
+    trabajos_avance1 STRING,
+    faltas_avance1 STRING,
+    conducta_avance1 STRING,
+    total_t_avance1 STRING,
+    total_tne_avance1 STRING,
+    cal_avance1 STRING,
+    examen_periodo1 STRING,
+    tareas_periodo1 STRING,
+    trabajos_periodo1 STRING,
+    faltas_periodo1 STRING,
+    conducta_periodo1 STRING,
+    total_t_periodo1 STRING,
+    total_tne_periodo1 STRING,
+    cal_periodo1 STRING,
+    examen_avance2 STRING,
+    tareas_avance2 STRING,
+    trabajos_avance2 STRING,
+    faltas_avance2 STRING,
+    conducta_avance2 STRING,
+    total_t_avance2 STRING,
+    total_tne_avance2 STRING,
+    cal_avance2 STRING,
+    examen_periodo2 STRING,
+    tareas_periodo2 STRING,
+    trabajos_periodo2 STRING,
+    faltas_periodo2 STRING,
+    conducta_periodo2 STRING,
+    total_t_periodo2 STRING,
+    total_tne_periodo2 STRING,
+    cal_periodo2 STRING,
+    examen_avance3 STRING,
+    tareas_avance3 STRING,
+    trabajos_avance3 STRING,
+    faltas_avance3 STRING,
+    conducta_avance3 STRING,
+    total_t_avance3 STRING,
+    total_tne_avance3 STRING,
+    cal_avance3 STRING,
+    examen_periodo3 STRING,
+    tareas_periodo3 STRING,
+    trabajos_periodo3 STRING,
+    faltas_periodo3 STRING,
+    conducta_periodo3 STRING,
+    total_t_periodo3 STRING,
+    total_tne_periodo3 STRING,
+    cal_periodo3 STRING,
+    promedio_total STRING,
+    cal_real_p1 STRING,
+    cal_real_p2 STRING,
+    cal_real_p3 STRING,
+    cal_recuperacion1 STRING,
+    cal_recuperacion2 STRING
+)
+ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
+WITH SERDEPROPERTIES (
+    "separatorChar" = ",",
+    "quoteChar" = "\"",
+    "escapeChar" = "\\"
+)
+STORED AS TEXTFILE
+LOCATION '/user/cloudera/sisadfpg/bd/inscripcion_curso_secundaria'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+
+INVALIDATE METADATA;
+REFRESH alumnos;
+REFRESH materias;
+REFRESH usuarios;
+REFRESH cursos_secundaria;
+REFRESH inscripcion_curso_secundaria;
+
+
+SELECT id_alumno, nombre_completo_alumno
+FROM alumnos
+LIMIT 10;
+
+SELECT id_alumno, id_cursos_secundaria, cal_periodo1, cal_periodo2, cal_periodo3
+FROM inscripcion_curso_secundaria
+LIMIT 10;
