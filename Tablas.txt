@@ -645,3 +645,267 @@ SELECT
 FROM vw_analisis_secundaria
 GROUP BY nombre_materia
 ORDER BY faltas_totales DESC;
+
+-----------------------------------------
+
+USE bd_analisis_escolar;
+
+DROP VIEW IF EXISTS vw_analisis_secundaria;
+DROP VIEW IF EXISTS vw_analisis_secundaria_base;
+
+CREATE VIEW vw_analisis_secundaria_base AS
+SELECT
+    regexp_replace(a.id_alumno,'"','') AS id_alumno,
+
+    concat(
+        regexp_replace(a.nombres_alumno,'"',''),
+        ' ',
+        regexp_replace(a.apellido1_alumno,'"',''),
+        ' ',
+        regexp_replace(a.apellido2_alumno,'"','')
+    ) AS nombre_completo_alumno,
+
+    regexp_replace(cs.grado,'"','') AS grado,
+    regexp_replace(cs.grupo,'"','') AS grupo,
+    regexp_replace(m.nombre_materia,'"','') AS nombre_materia,
+    regexp_replace(u.nom_usuario,'"','') AS docente,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.cal_periodo1,'"','')) IN ('', 'NULL', 'null') THEN NULL
+        ELSE CAST(regexp_replace(ics.cal_periodo1,'"','') AS DOUBLE)
+    END AS cal_periodo1,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.cal_periodo2,'"','')) IN ('', 'NULL', 'null') THEN NULL
+        ELSE CAST(regexp_replace(ics.cal_periodo2,'"','') AS DOUBLE)
+    END AS cal_periodo2,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.cal_periodo3,'"','')) IN ('', 'NULL', 'null') THEN NULL
+        ELSE CAST(regexp_replace(ics.cal_periodo3,'"','') AS DOUBLE)
+    END AS cal_periodo3,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.cal_recuperacion1,'"','')) IN ('', 'NULL', 'null') THEN NULL
+        ELSE CAST(regexp_replace(ics.cal_recuperacion1,'"','') AS DOUBLE)
+    END AS cal_recuperacion1,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.cal_recuperacion2,'"','')) IN ('', 'NULL', 'null') THEN NULL
+        ELSE CAST(regexp_replace(ics.cal_recuperacion2,'"','') AS DOUBLE)
+    END AS cal_recuperacion2,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.faltas_periodo1,'"','')) IN ('', 'NULL', 'null') THEN 0
+        ELSE CAST(regexp_replace(ics.faltas_periodo1,'"','') AS DOUBLE)
+    END AS faltas_periodo1,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.faltas_periodo2,'"','')) IN ('', 'NULL', 'null') THEN 0
+        ELSE CAST(regexp_replace(ics.faltas_periodo2,'"','') AS DOUBLE)
+    END AS faltas_periodo2,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.faltas_periodo3,'"','')) IN ('', 'NULL', 'null') THEN 0
+        ELSE CAST(regexp_replace(ics.faltas_periodo3,'"','') AS DOUBLE)
+    END AS faltas_periodo3,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.conducta_periodo1,'"','')) IN ('', 'NULL', 'null') THEN NULL
+        ELSE CAST(regexp_replace(ics.conducta_periodo1,'"','') AS DOUBLE)
+    END AS conducta_periodo1,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.conducta_periodo2,'"','')) IN ('', 'NULL', 'null') THEN NULL
+        ELSE CAST(regexp_replace(ics.conducta_periodo2,'"','') AS DOUBLE)
+    END AS conducta_periodo2,
+
+    CASE 
+        WHEN trim(regexp_replace(ics.conducta_periodo3,'"','')) IN ('', 'NULL', 'null') THEN NULL
+        ELSE CAST(regexp_replace(ics.conducta_periodo3,'"','') AS DOUBLE)
+    END AS conducta_periodo3
+
+FROM inscripcion_curso_secundaria ics
+
+INNER JOIN alumnos a
+ON regexp_replace(ics.id_alumno,'"','') = regexp_replace(a.id_alumno,'"','')
+
+INNER JOIN cursos_secundaria cs
+ON regexp_replace(ics.id_cursos_secundaria,'"','') = regexp_replace(cs.id_curso_secundaria,'"','')
+
+INNER JOIN materias m
+ON regexp_replace(cs.id_materia,'"','') = regexp_replace(m.id_materia,'"','')
+
+LEFT JOIN usuarios u
+ON regexp_replace(cs.id_maestro,'"','') = regexp_replace(u.id_usuario,'"','');
+
+
+
+
+CREATE VIEW vw_analisis_secundaria AS
+SELECT
+    id_alumno,
+    nombre_completo_alumno,
+    grado,
+    grupo,
+    nombre_materia,
+    docente,
+
+    cal_periodo1,
+    cal_periodo2,
+    cal_periodo3,
+    cal_recuperacion1,
+    cal_recuperacion2,
+
+    CASE 
+        WHEN cal_recuperacion1 IS NOT NULL AND cal_recuperacion1 > 0 THEN cal_recuperacion1
+        ELSE cal_periodo1
+    END AS cal_p1_final,
+
+    CASE 
+        WHEN cal_recuperacion2 IS NOT NULL AND cal_recuperacion2 > 0 THEN cal_recuperacion2
+        ELSE cal_periodo2
+    END AS cal_p2_final,
+
+    cal_periodo3 AS cal_p3_final,
+
+    ROUND(
+        (
+            ifnull(CASE WHEN cal_recuperacion1 IS NOT NULL AND cal_recuperacion1 > 0 THEN cal_recuperacion1 ELSE cal_periodo1 END, 0)
+            +
+            ifnull(CASE WHEN cal_recuperacion2 IS NOT NULL AND cal_recuperacion2 > 0 THEN cal_recuperacion2 ELSE cal_periodo2 END, 0)
+            +
+            ifnull(cal_periodo3, 0)
+        )
+        /
+        (
+            CASE WHEN cal_periodo1 IS NOT NULL OR cal_recuperacion1 IS NOT NULL THEN 1 ELSE 0 END
+            +
+            CASE WHEN cal_periodo2 IS NOT NULL OR cal_recuperacion2 IS NOT NULL THEN 1 ELSE 0 END
+            +
+            CASE WHEN cal_periodo3 IS NOT NULL THEN 1 ELSE 0 END
+        )
+    , 2) AS promedio_final_calculado,
+
+    faltas_periodo1 + faltas_periodo2 + faltas_periodo3 AS total_faltas,
+
+    ROUND(
+        (
+            ifnull(conducta_periodo1, 0)
+            +
+            ifnull(conducta_periodo2, 0)
+            +
+            ifnull(conducta_periodo3, 0)
+        )
+        /
+        (
+            CASE WHEN conducta_periodo1 IS NOT NULL THEN 1 ELSE 0 END
+            +
+            CASE WHEN conducta_periodo2 IS NOT NULL THEN 1 ELSE 0 END
+            +
+            CASE WHEN conducta_periodo3 IS NOT NULL THEN 1 ELSE 0 END
+        )
+    , 2) AS promedio_conducta,
+
+    CASE
+        WHEN ROUND(
+            (
+                ifnull(CASE WHEN cal_recuperacion1 IS NOT NULL AND cal_recuperacion1 > 0 THEN cal_recuperacion1 ELSE cal_periodo1 END, 0)
+                +
+                ifnull(CASE WHEN cal_recuperacion2 IS NOT NULL AND cal_recuperacion2 > 0 THEN cal_recuperacion2 ELSE cal_periodo2 END, 0)
+                +
+                ifnull(cal_periodo3, 0)
+            )
+            /
+            (
+                CASE WHEN cal_periodo1 IS NOT NULL OR cal_recuperacion1 IS NOT NULL THEN 1 ELSE 0 END
+                +
+                CASE WHEN cal_periodo2 IS NOT NULL OR cal_recuperacion2 IS NOT NULL THEN 1 ELSE 0 END
+                +
+                CASE WHEN cal_periodo3 IS NOT NULL THEN 1 ELSE 0 END
+            )
+        , 2) < 6 THEN 'REPROBADO'
+
+        WHEN ROUND(
+            (
+                ifnull(CASE WHEN cal_recuperacion1 IS NOT NULL AND cal_recuperacion1 > 0 THEN cal_recuperacion1 ELSE cal_periodo1 END, 0)
+                +
+                ifnull(CASE WHEN cal_recuperacion2 IS NOT NULL AND cal_recuperacion2 > 0 THEN cal_recuperacion2 ELSE cal_periodo2 END, 0)
+                +
+                ifnull(cal_periodo3, 0)
+            )
+            /
+            (
+                CASE WHEN cal_periodo1 IS NOT NULL OR cal_recuperacion1 IS NOT NULL THEN 1 ELSE 0 END
+                +
+                CASE WHEN cal_periodo2 IS NOT NULL OR cal_recuperacion2 IS NOT NULL THEN 1 ELSE 0 END
+                +
+                CASE WHEN cal_periodo3 IS NOT NULL THEN 1 ELSE 0 END
+            )
+        , 2) < 7 THEN 'RIESGO'
+
+        ELSE 'APROBADO'
+    END AS estatus_academico
+
+FROM vw_analisis_secundaria_base;
+
+
+Promedio general por materia
+
+SELECT
+    nombre_materia,
+    COUNT(*) AS total_registros,
+    ROUND(AVG(promedio_final_calculado), 2) AS promedio_materia,
+    ROUND(AVG(total_faltas), 2) AS promedio_faltas,
+    ROUND(AVG(promedio_conducta), 2) AS promedio_conducta
+FROM vw_analisis_secundaria
+GROUP BY nombre_materia
+ORDER BY promedio_materia ASC;
+
+Alumnos en riesgo académico
+
+SELECT
+    nombre_completo_alumno,
+    grado,
+    grupo,
+    nombre_materia,
+    promedio_final_calculado,
+    total_faltas,
+    promedio_conducta,
+    estatus_academico
+FROM vw_analisis_secundaria
+WHERE estatus_academico IN ('RIESGO', 'REPROBADO')
+ORDER BY promedio_final_calculado ASC, total_faltas DESC;
+
+Indice de reprobación por grupo
+
+SELECT
+    grado,
+    grupo,
+    COUNT(*) AS total_evaluaciones,
+    SUM(CASE WHEN estatus_academico = 'REPROBADO' THEN 1 ELSE 0 END) AS total_reprobadas,
+    ROUND(
+        SUM(CASE WHEN estatus_academico = 'REPROBADO' THEN 1 ELSE 0 END) * 100.0 / COUNT(*),
+        2
+    ) AS porcentaje_reprobacion
+FROM vw_analisis_secundaria
+GROUP BY grado, grupo
+ORDER BY porcentaje_reprobacion DESC;
+
+Recuperaciones por materia
+
+SELECT
+    nombre_materia,
+    COUNT(*) AS total_registros,
+    SUM(CASE WHEN cal_recuperacion1 > 0 THEN 1 ELSE 0 END) AS recuperaciones_p1,
+    SUM(CASE WHEN cal_recuperacion2 > 0 THEN 1 ELSE 0 END) AS recuperaciones_p2,
+    SUM(
+        CASE WHEN cal_recuperacion1 > 0 THEN 1 ELSE 0 END
+        +
+        CASE WHEN cal_recuperacion2 > 0 THEN 1 ELSE 0 END
+    ) AS total_recuperaciones
+FROM vw_analisis_secundaria
+GROUP BY nombre_materia
+ORDER BY total_recuperaciones DESC;
+
+
