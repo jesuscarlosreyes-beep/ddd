@@ -1,3 +1,5 @@
+USE bd_analisis_escolar;
+
 CREATE EXTERNAL TABLE alumnos (
     id_alumno STRING,
     curp_alumno STRING,
@@ -7,17 +9,11 @@ CREATE EXTERNAL TABLE alumnos (
     nombre_completo_alumno STRING,
     matricula_alumno STRING
 )
-ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
-WITH SERDEPROPERTIES (
-    "separatorChar" = ",",
-    "quoteChar" = "\"",
-    "escapeChar" = "\\"
-)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
-LOCATION '/user/cloudera/sisadfpg/bd/alumnos'
+LOCATION '/user/cloudera/sisadfpg/alumnos'
 TBLPROPERTIES ('skip.header.line.count'='1');
-
-
 
 
 CREATE EXTERNAL TABLE materias (
@@ -27,16 +23,11 @@ CREATE EXTERNAL TABLE materias (
     orden_materia STRING,
     id_seccion STRING
 )
-ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
-WITH SERDEPROPERTIES (
-    "separatorChar" = ",",
-    "quoteChar" = "\"",
-    "escapeChar" = "\\"
-)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
-LOCATION '/user/cloudera/sisadfpg/bd/materias'
+LOCATION '/user/cloudera/sisadfpg/materias'
 TBLPROPERTIES ('skip.header.line.count'='1');
-
 
 
 CREATE EXTERNAL TABLE usuarios (
@@ -48,14 +39,10 @@ CREATE EXTERNAL TABLE usuarios (
     comentario_usuario STRING,
     estatus_usuario STRING
 )
-ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
-WITH SERDEPROPERTIES (
-    "separatorChar" = ",",
-    "quoteChar" = "\"",
-    "escapeChar" = "\\"
-)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
-LOCATION '/user/cloudera/sisadfpg/bd/usuarios'
+LOCATION '/user/cloudera/sisadfpg/usuarios'
 TBLPROPERTIES ('skip.header.line.count'='1');
 
 
@@ -82,17 +69,11 @@ CREATE EXTERNAL TABLE cursos_secundaria (
     habilita_r1 STRING,
     habilita_r2 STRING
 )
-ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
-WITH SERDEPROPERTIES (
-    "separatorChar" = ",",
-    "quoteChar" = "\"",
-    "escapeChar" = "\\"
-)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
-LOCATION '/user/cloudera/sisadfpg/bd/cursos_secundaria'
+LOCATION '/user/cloudera/sisadfpg/cursos_secundaria'
 TBLPROPERTIES ('skip.header.line.count'='1');
-
-
 
 CREATE EXTERNAL TABLE inscripcion_curso_secundaria (
     id_inscripcion_curso_secundaria STRING,
@@ -153,29 +134,21 @@ CREATE EXTERNAL TABLE inscripcion_curso_secundaria (
     cal_recuperacion1 STRING,
     cal_recuperacion2 STRING
 )
-ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.OpenCSVSerde'
-WITH SERDEPROPERTIES (
-    "separatorChar" = ",",
-    "quoteChar" = "\"",
-    "escapeChar" = "\\"
-)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
-LOCATION '/user/cloudera/sisadfpg/bd/inscripcion_curso_secundaria'
+LOCATION '/user/cloudera/sisadfpg/inscripcion_curso_secundaria'
 TBLPROPERTIES ('skip.header.line.count'='1');
 
 
 INVALIDATE METADATA;
+
 REFRESH alumnos;
 REFRESH materias;
 REFRESH usuarios;
 REFRESH cursos_secundaria;
 REFRESH inscripcion_curso_secundaria;
 
+SELECT * FROM alumnos LIMIT 10;
 
-SELECT id_alumno, nombre_completo_alumno
-FROM alumnos
-LIMIT 10;
-
-SELECT id_alumno, id_cursos_secundaria, cal_periodo1, cal_periodo2, cal_periodo3
-FROM inscripcion_curso_secundaria
-LIMIT 10;
+SELECT * FROM inscripcion_curso_secundaria LIMIT 10;
